@@ -325,8 +325,8 @@
                     const easedExplode = localProgress * localProgress * (3 - 2 * localProgress);
 
                     // 設定新座標（主要沿著 X 軸左右位移）
-                   //part.position.x = orig.x + dir.x * dist * easedExplode;
-                  //  part.position.y = orig.y + dir.y * dist * easedExplode;
+                    part.position.x = orig.x + dir.x * dist * easedExplode;
+                    part.position.y = orig.y + dir.y * dist * easedExplode;
                     part.position.z = orig.z + dir.z * dist * easedExplode;
                 });
             }
