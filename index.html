@@ -203,49 +203,48 @@
                 const scale = 2.2 / maxDim;
                 model.scale.set(scale, scale, scale);
 
-                // 遍歷模型 Mesh 並設定向左右爆炸的方向與區間
+                // 遍歷模型 Mesh 並設定 Z 軸爆炸方向與順序 (錯開距離防止重疊)
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.userData.originalPos = child.position.clone();
 
-                        let dir = new THREE.Vector3(0, 0, 0);
+                        let dir = new THREE.Vector3(0, 0, 1); // 預設主方向為 Z 軸
                         let dist = 1.0;
-                        let startAt = 0.2; // 0.0~0.2 為旋轉時間，爆炸從 0.2 開始
+                        let startAt = 0.2; // 0.0~0.2 為 90 度旋轉，爆炸從 0.2 開始
                         let endAt = 1.0;
 
                         const name = child.name;
 
-                        // 設定向左 (-) 或向右 (+) 爆開
                         if (name.includes('Bear_Up-1.001')) {
-                            // 第一階段：往左上方爆開
-                            dir.set(-1.8, 0.5, 0.2);
-                            dist = 2.2;
+                            // 1. 最先爆開：往最前方 (Z+) 推出最大距離，防止後方物件碰撞
+                            dir.set(0, 0, 1);
+                            dist = 3.5;
                             startAt = 0.2;
-                            endAt = 0.6;
+                            endAt = 0.55;
                         } else if (name.includes('木柄')) {
-                            // 第二階段：往左下方爆開
-                            dir.set(-2.2, -0.8, 0);
+                            // 2. 第二階段：往最後方 (Z-) 深處拉開
+                            dir.set(0, 0, -1);
                             dist = 2.5;
                             startAt = 0.4;
-                            endAt = 0.85;
+                            endAt = 0.8;
                         } else if (name.includes('Bear-2026-06-07')) {
-                            // 第二階段：往右上方爆開
-                            dir.set(2.0, 0.6, 0.3);
-                            dist = 2.0;
+                            // 3. 第二階段同步：往前（Z+）推至中間層
+                            dir.set(0, 0, 1);
+                            dist = 1.8;
                             startAt = 0.45;
-                            endAt = 0.9;
+                            endAt = 0.85;
                         } else if (name.includes('Bear-dw')) {
-                            // 第三階段：最後往右下方爆開
-                            dir.set(1.8, -0.7, -0.2);
-                            dist = 2.2;
+                            // 4. 第三階段最後爆開：往後（Z-）微幅推開，保持在中間偏後
+                            dir.set(0, 0, -1);
+                            dist = 1.2;
                             startAt = 0.6;
                             endAt = 1.0;
                         } else {
-                            // 未指定名稱的備用左右推移
-                            dir.set(child.position.x >= 0 ? 1.5 : -1.5, 0, 0);
-                            dist = 1.2;
+                            // 其他未命名備用 Mesh
+                            dir.set(0, 0, child.position.z >= 0 ? 1 : -1);
+                            dist = 1.5;
                             startAt = 0.3;
-                            endAt = 0.95;
+                            endAt = 0.9;
                         }
 
                         child.userData.explodeDir = dir;
@@ -298,18 +297,15 @@
             totalProgress += (targetProgress - totalProgress) * 0.08;
 
             if (model) {
-                // 【階段一：前 20% 滾動為旋轉階段】
-                // 將 0.0 ~ 0.2 的滾動進度對應成 0 ~ 90 度 (Math.PI / 2)
+                // 【階段一：前 20% 滾動進行整體旋轉 90 度】
                 const rotateStep = Math.min(Math.max(totalProgress / 0.2, 0), 1);
-                // 加上平滑緩動
                 const easedRotate = rotateStep * rotateStep * (3 - 2 * rotateStep);
                 const targetAngleY = easedRotate * (Math.PI / 2);
 
-                // 設定模型整體旋轉 (並疊加滑鼠微幅懸停影響)
                 model.rotation.y = targetAngleY + mouseX * 0.3;
                 model.rotation.x = mouseY * 0.3;
 
-                // 【階段二：後 80% 滾動為左右爆炸階段】
+                // 【階段二：後 80% 滾動進行 Z 軸分層爆炸】
                 parts.forEach((part) => {
                     const orig = part.userData.originalPos;
                     const dir = part.userData.explodeDir;
@@ -317,14 +313,14 @@
                     const startAt = part.userData.startAt;
                     const endAt = part.userData.endAt;
 
-                    // 計算該零件在 0.2 ~ 1.0 區間內的局部進度
+                    // 計算每個零件的局部進度
                     let localProgress = (totalProgress - startAt) / (endAt - startAt);
                     localProgress = Math.min(Math.max(localProgress, 0), 1);
 
-                    // Smoothstep 緩動計算
+                    // Smoothstep 緩動函數
                     const easedExplode = localProgress * localProgress * (3 - 2 * localProgress);
 
-                    // 設定新座標（主要沿著 X 軸左右位移）
+                    // 套用位移，專注於 Z 軸延伸
                     part.position.x = orig.x + dir.x * dist * easedExplode;
                     part.position.y = orig.y + dir.y * dist * easedExplode;
                     part.position.z = orig.z + dir.z * dist * easedExplode;
