@@ -176,11 +176,11 @@
         dirLight2.position.set(-5, -5, -5);
         scene.add(dirLight2);
 
-        // 3. 全域變數定義 (爆炸邏輯使用)
+        // 3. 全域變數定義 (動畫與爆炸邏輯)
         let model;
         const parts = [];             // 記錄各個 Mesh 的拆解參數
-        let explodeProgress = 0;      // 當前平滑進度 (0~1)
-        let targetExplode = 0;       // 目標進度 (0~1)
+        let totalProgress = 0;        // 總滾動進度 (0~1)
+        let targetProgress = 0;       // 目標滾動進度 (0~1)
 
         // 4. 載入 popsicle.glb 模型
         const loader = new THREE.GLTFLoader();
@@ -203,52 +203,49 @@
                 const scale = 2.2 / maxDim;
                 model.scale.set(scale, scale, scale);
 
-                // 遍歷模型 Mesh 並綁定順序與爆炸方向
+                // 遍歷模型 Mesh 並設定向左右爆炸的方向與區間
                 model.traverse((child) => {
                     if (child.isMesh) {
-                        // 1. 備份原本座標
                         child.userData.originalPos = child.position.clone();
 
-                        // 預設參數
                         let dir = new THREE.Vector3(0, 0, 0);
                         let dist = 1.0;
-                        let startAt = 0.0; // 開始觸發的進度時間點 (0.0 ~ 1.0)
-                        let endAt = 1.0;   // 完成該零件移動的時間點
+                        let startAt = 0.2; // 0.0~0.2 為旋轉時間，爆炸從 0.2 開始
+                        let endAt = 1.0;
 
                         const name = child.name;
 
-                        // 2. 根據需求對應 Mesh 設定爆炸順序與方向
+                        // 設定向左 (-) 或向右 (+) 爆開
                         if (name.includes('Bear_Up-1.001')) {
-                            // 第一階段爆開：往上開
-                            dir.set(0, 1.5, 0.2);
-                            dist = 2.0;
-                            startAt = 0.0;
-                            endAt = 0.5;
-                        } else if (name.includes('木柄')) {
-                            // 第二階段爆開：往下開 (冰棒棍)
-                            dir.set(0, -1.8, 0);
-                            dist = 2.5;
-                            startAt = 0.2;
-                            endAt = 0.8;
-                        } else if (name.includes('Bear-2026-06-07')) {
-                            // 第二階段爆開：往前方/側邊彈出
-                            dir.set(0.3, 0.5, 1.2);
-                            dist = 1.8;
-                            startAt = 0.3;
-                            endAt = 0.85;
-                        } else if (name.includes('Bear-dw')) {
-                            // 第三階段爆開：最後往下方飛出
-                            dir.set(0, -1.2, -0.3);
+                            // 第一階段：往左上方爆開
+                            dir.set(-1.8, 0.5, 0.2);
                             dist = 2.2;
-                            startAt = 0.5;
+                            startAt = 0.2;
+                            endAt = 0.6;
+                        } else if (name.includes('木柄')) {
+                            // 第二階段：往左下方爆開
+                            dir.set(-2.2, -0.8, 0);
+                            dist = 2.5;
+                            startAt = 0.4;
+                            endAt = 0.85;
+                        } else if (name.includes('Bear-2026-06-07')) {
+                            // 第二階段：往右上方爆開
+                            dir.set(2.0, 0.6, 0.3);
+                            dist = 2.0;
+                            startAt = 0.45;
+                            endAt = 0.9;
+                        } else if (name.includes('Bear-dw')) {
+                            // 第三階段：最後往右下方爆開
+                            dir.set(1.8, -0.7, -0.2);
+                            dist = 2.2;
+                            startAt = 0.6;
                             endAt = 1.0;
                         } else {
-                            // 其他未指定名稱的備用推移方向
-                            dir = child.position.clone().normalize();
-                            if (dir.length() === 0) dir.set(0, 0, 1);
-                            dist = 1.0;
-                            startAt = 0.1;
-                            endAt = 0.9;
+                            // 未指定名稱的備用左右推移
+                            dir.set(child.position.x >= 0 ? 1.5 : -1.5, 0, 0);
+                            dist = 1.2;
+                            startAt = 0.3;
+                            endAt = 0.95;
                         }
 
                         child.userData.explodeDir = dir;
@@ -285,11 +282,11 @@
             mouseY = (e.clientY / window.innerHeight - 0.5) * 0.5;
         });
 
-        // 網頁滾動時，更新目標爆炸進度 (0 到 1)
+        // 網頁滾動時更新目標進度
         window.addEventListener('scroll', () => {
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
             if (maxScroll > 0) {
-                targetExplode = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
+                targetProgress = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
             }
         });
 
@@ -298,14 +295,21 @@
             requestAnimationFrame(animate);
 
             // 平滑漸變進度
-            explodeProgress += (targetExplode - explodeProgress) * 0.08;
+            totalProgress += (targetProgress - totalProgress) * 0.08;
 
             if (model) {
-                // 輕微視角旋轉跟隨滑鼠
-                model.rotation.y = mouseX * 0.5;
-                model.rotation.x = mouseY * 0.5;
+                // 【階段一：前 20% 滾動為旋轉階段】
+                // 將 0.0 ~ 0.2 的滾動進度對應成 0 ~ 90 度 (Math.PI / 2)
+                const rotateStep = Math.min(Math.max(totalProgress / 0.2, 0), 1);
+                // 加上平滑緩動
+                const easedRotate = rotateStep * rotateStep * (3 - 2 * rotateStep);
+                const targetAngleY = easedRotate * (Math.PI / 2);
 
-                // 更新每個零件的位置 (階段性分段計算)
+                // 設定模型整體旋轉 (並疊加滑鼠微幅懸停影響)
+                model.rotation.y = targetAngleY + mouseX * 0.3;
+                model.rotation.x = mouseY * 0.3;
+
+                // 【階段二：後 80% 滾動為左右爆炸階段】
                 parts.forEach((part) => {
                     const orig = part.userData.originalPos;
                     const dir = part.userData.explodeDir;
@@ -313,17 +317,17 @@
                     const startAt = part.userData.startAt;
                     const endAt = part.userData.endAt;
 
-                    // 計算當前零件在所屬區間內的局部進度 (0 ~ 1)
-                    let localProgress = (explodeProgress - startAt) / (endAt - startAt);
+                    // 計算該零件在 0.2 ~ 1.0 區間內的局部進度
+                    let localProgress = (totalProgress - startAt) / (endAt - startAt);
                     localProgress = Math.min(Math.max(localProgress, 0), 1);
 
-                    // 套用 Smoothstep 緩和函數，讓開合動作更平滑
-                    const easedProgress = localProgress * localProgress * (3 - 2 * localProgress);
+                    // Smoothstep 緩動計算
+                    const easedExplode = localProgress * localProgress * (3 - 2 * localProgress);
 
-                    // 設定新座標
-                    part.position.x = orig.x + dir.x * dist * easedProgress;
-                    part.position.y = orig.y + dir.y * dist * easedProgress;
-                    part.position.z = orig.z + dir.z * dist * easedProgress;
+                    // 設定新座標（主要沿著 X 軸左右位移）
+                    part.position.x = orig.x + dir.x * dist * easedExplode;
+                    part.position.y = orig.y + dir.y * dist * easedExplode;
+                    part.position.z = orig.z + dir.z * dist * easedExplode;
                 });
             }
 
