@@ -118,7 +118,7 @@
         <!-- 區塊 1: 主標題 -->
         <section class="section-center">
             <h1 class="hero-title">POPSICLE</h1>
-            <p class="subtitle">夏天最清涼的極緻冰品-1</p>
+            <p class="subtitle">夏天最清涼的極緻冰品-2</p>
         </section>
 
         <!-- 區塊 2: 產品特點 (左) -->
@@ -218,7 +218,7 @@
                         if (name.includes('Bear_Up-1.001')) {
                             // 1. 最先爆開：往最前方 (Z+) 推出最大距離，防止後方物件碰撞
                             dir.set(0, 0, 1);
-                            dist = 1;
+                            dist = 0.25;
                             startAt = 0.45;
                             endAt = 0.8;
                         } else if (name.includes('木柄')) {
