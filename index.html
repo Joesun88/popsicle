@@ -218,25 +218,25 @@
                         if (name.includes('Bear_Up-1.001')) {
                             // 1. 最先爆開：往最前方 (Z+) 推出最大距離，防止後方物件碰撞
                             dir.set(0, 0, 1);
-                            dist = 1.15;
+                            dist = 1.0;
                             startAt = 0.2;
                             endAt = 0.55;
                         } else if (name.includes('木柄')) {
                             // 2. 第二階段：往最後方 (Z-) 深處拉開
                             dir.set(0, 0, 1);
-                            dist = 1.1;
+                            dist = 0.6;
                             startAt = 0.4;
                             endAt = 0.8;
                         } else if (name.includes('Bear-2026-06-07')) {
                             // 3. 第二階段同步：往前（Z+）推至中間層
                             dir.set(0, 0, 1);
-                            dist = 1.05;
+                            dist = 0.3;
                             startAt = 0.45;
                             endAt = 0.85;
                         } else if (name.includes('Bear-dw')) {
                             // 4. 第三階段最後爆開：往後（Z-）微幅推開，保持在中間偏後
                             dir.set(0, 0, -1);
-                            dist = 1.05;
+                            dist = 0.3;
                             startAt = 0.6;
                             endAt = 1.0;
                         } else {
