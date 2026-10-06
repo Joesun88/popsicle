@@ -300,7 +300,7 @@
                 // 【階段一：前 20% 滾動進行整體旋轉 90 度】
                 const rotateStep = Math.min(Math.max(totalProgress / 0.2, 0), 1);
                 const easedRotate = rotateStep * rotateStep * (3 - 2 * rotateStep);
-                const targetAngleY = easedRotate * (Math.PI / 2);
+                const targetAngleY = easedRotate * (Math.PI / 3);
 
                 model.rotation.y = targetAngleY + mouseX * 0.3;
                 model.rotation.x = mouseY * 0.3;
